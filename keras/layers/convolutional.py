@@ -95,7 +95,8 @@ class Convolution2D(Layer):
     def __init__(self, nb_filter, stack_size, nb_row, nb_col, 
         init='glorot_uniform', activation='linear', weights=None, 
         border_mode='valid', subsample=(1, 1),
-        W_regularizer=None, b_regularizer=None, activity_regularizer=None, W_constraint=None, b_constraint=None):
+        W_regularizer=None, b_regularizer=None, activity_regularizer=None,
+        W_constraint=None, b_constraint=None, gpu_impl='gpuconv'):
         super(Convolution2D,self).__init__()
 
         self.init = initializations.get(init)
@@ -127,14 +128,20 @@ class Convolution2D(Layer):
             
         self.constraints = [W_constraint, b_constraint]
 
+        self.gpu_impl = gpu_impl
+
         if weights is not None:
             self.set_weights(weights)
 
     def get_output(self, train):
         X = self.get_input(train)
 
-        conv_out = theano.tensor.nnet.conv.conv2d(X, self.W, 
-            border_mode=self.border_mode, subsample=self.subsample)
+        if(self.gpu_impl == 'cudnn'):
+          conv_out = theano.sandbox.cuda.dnn.dnn_conv(X, self.W,
+              border_mode=self.border_mode, subsample=self.subsample)
+        else:
+          conv_out = theano.tensor.nnet.conv.conv2d(X, self.W, 
+              border_mode=self.border_mode, subsample=self.subsample)
         output = self.activation(conv_out + self.b.dimshuffle('x', 0, 'x', 'x'))
         return output
 
@@ -147,19 +154,24 @@ class Convolution2D(Layer):
             "init":self.init.__name__,
             "activation":self.activation.__name__,
             "border_mode":self.border_mode,
-            "subsample":self.subsample}
+            "subsample":self.subsample,
+            "gpu_impl":self.gpu_impl}
 
 
 class MaxPooling2D(Layer):
-    def __init__(self, poolsize=(2, 2), ignore_border=True, st=None):
+    def __init__(self, poolsize=(2, 2), ignore_border=True, st=None, gpu_impl='gpuconv'):
         super(MaxPooling2D,self).__init__()
         self.input = T.tensor4()
         self.poolsize = poolsize
         self.ignore_border = ignore_border
         self.st = st
+        self.gpu_impl = gpu_impl
     def get_output(self, train):
         X = self.get_input(train)
-        output = downsample.max_pool_2d(X, self.poolsize, ignore_border=self.ignore_border, st=self.st)
+        if(self.gpu_impl == 'cudnn'):
+          output = theano.sandbox.cuda.dnn.dnn_pool(X, self.poolsize, stride=self.st)
+        else:
+          output = downsample.max_pool_2d(X, self.poolsize, ignore_border=self.ignore_border, st=self.st)
         return output
 
     def get_config(self):
