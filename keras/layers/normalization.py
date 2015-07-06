@@ -86,11 +86,13 @@ class LRN2D(Layer):
         b, ch, r, c = input_dim
         extra_channels = T.alloc(0., b, ch + 2*half_n, r, c)
         input_sqr = T.set_subtensor(extra_channels[:, half_n:half_n+ch, :, :],input_sqr)
-        scale = self.k
-        for i in range(self.n):
-            scale += self.alpha * input_sqr[:, i:i+ch, :, :]
-        scale = scale ** self.beta
-        return X / scale
+        # BATTLE: remove scaling
+        # scale = self.k
+        # for i in range(self.n):
+        #     scale += self.alpha * input_sqr[:, i:i+ch, :, :]
+        # scale = scale ** self.beta
+        # return X / scale
+        return X
 
     def get_config(self):
         return {"name":self.__class__.__name__,

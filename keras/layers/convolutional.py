@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import theano
 import theano.tensor as T
 from theano.tensor.signal import downsample
+from theano.sandbox.cuda.basic_ops import gpu_contiguous
 
 from .. import activations, initializations
 from ..utils.theano_utils import shared_zeros
@@ -96,7 +97,7 @@ class Convolution2D(Layer):
         init='glorot_uniform', activation='linear', weights=None, 
         border_mode='valid', subsample=(1, 1),
         W_regularizer=None, b_regularizer=None, activity_regularizer=None,
-        W_constraint=None, b_constraint=None, gpu_impl='gpuconv'):
+        W_constraint=None, b_constraint=None, impl='gpuconv'):
         super(Convolution2D,self).__init__()
 
         self.init = initializations.get(init)
@@ -128,7 +129,7 @@ class Convolution2D(Layer):
             
         self.constraints = [W_constraint, b_constraint]
 
-        self.gpu_impl = gpu_impl
+        self.impl = impl
 
         if weights is not None:
             self.set_weights(weights)
@@ -136,12 +137,20 @@ class Convolution2D(Layer):
     def get_output(self, train):
         X = self.get_input(train)
 
-        if(self.gpu_impl == 'cudnn'):
-          conv_out = theano.sandbox.cuda.dnn.dnn_conv(X, self.W,
-              border_mode=self.border_mode, subsample=self.subsample)
-        else:
+        print "Conv2D:", self.impl
+        if self.impl == 'cudnn':
+          conv_out = theano.sandbox.cuda.dnn.dnn_conv(gpu_contiguous(X), gpu_contiguous(self.W),
+              border_mode=self.border_mode, subsample=self.subsample, conv_mode='cross')
+        elif self.impl == 'gpucorrmm':
+          conv_out = theano.sandbox.cuda.blas.GpuCorrMM(border_mode=self.border_mode,
+                                            subsample=self.subsample)(X,
+                                                                      self.W)
+        elif self.impl == 'conv2d':
           conv_out = theano.tensor.nnet.conv.conv2d(X, self.W, 
               border_mode=self.border_mode, subsample=self.subsample)
+        else:
+          print "Not Implemented!"
+
         output = self.activation(conv_out + self.b.dimshuffle('x', 0, 'x', 'x'))
         return output
 
@@ -155,23 +164,24 @@ class Convolution2D(Layer):
             "activation":self.activation.__name__,
             "border_mode":self.border_mode,
             "subsample":self.subsample,
-            "gpu_impl":self.gpu_impl}
+            "impl":self.impl}
 
 
 class MaxPooling2D(Layer):
-    def __init__(self, poolsize=(2, 2), ignore_border=True, st=None, gpu_impl='gpuconv'):
+    def __init__(self, poolsize=(2, 2), ignore_border=True, st=None, impl='cudnn'):
         super(MaxPooling2D,self).__init__()
         self.input = T.tensor4()
         self.poolsize = poolsize
         self.ignore_border = ignore_border
         self.st = st
-        self.gpu_impl = gpu_impl
+        self.impl = impl
     def get_output(self, train):
         X = self.get_input(train)
-        if(self.gpu_impl == 'cudnn'):
-          output = theano.sandbox.cuda.dnn.dnn_pool(X, self.poolsize, stride=self.st)
-        else:
-          output = downsample.max_pool_2d(X, self.poolsize, ignore_border=self.ignore_border, st=self.st)
+        print "Pool:", self.impl
+        if self.impl == 'cudnn':
+          output = theano.sandbox.cuda.dnn.dnn_pool(img=gpu_contiguous(X), ws=self.poolsize, stride=self.st, mode='max')
+        elif self.impl == 'conv2d':
+          output = downsample.max_pool_2d(X, self.poolsize, st=self.st, ignore_border=True)
         return output
 
     def get_config(self):
