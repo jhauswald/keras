@@ -97,7 +97,7 @@ class Convolution2D(Layer):
         init='glorot_uniform', activation='linear', weights=None, 
         border_mode='valid', subsample=(1, 1),
         W_regularizer=None, b_regularizer=None, activity_regularizer=None,
-        W_constraint=None, b_constraint=None, impl='gpuconv'):
+        W_constraint=None, b_constraint=None, impl='cpu'):
         super(Convolution2D,self).__init__()
 
         self.init = initializations.get(init)
@@ -137,7 +137,6 @@ class Convolution2D(Layer):
     def get_output(self, train):
         X = self.get_input(train)
 
-        print "Conv2D:", self.impl
         if self.impl == 'cudnn':
           conv_out = theano.sandbox.cuda.dnn.dnn_conv(gpu_contiguous(X), gpu_contiguous(self.W),
               border_mode=self.border_mode, subsample=self.subsample, conv_mode='cross')
@@ -145,11 +144,11 @@ class Convolution2D(Layer):
           conv_out = theano.sandbox.cuda.blas.GpuCorrMM(border_mode=self.border_mode,
                                             subsample=self.subsample)(X,
                                                                       self.W)
-        elif self.impl == 'conv2d':
+        elif self.impl == 'cpu':
           conv_out = theano.tensor.nnet.conv.conv2d(X, self.W, 
               border_mode=self.border_mode, subsample=self.subsample)
-        else:
-          print "Not Implemented!"
+        elif self.impl == 'gpu':
+          print "Not Implemented!, TODO FFT"
 
         output = self.activation(conv_out + self.b.dimshuffle('x', 0, 'x', 'x'))
         return output
@@ -168,7 +167,7 @@ class Convolution2D(Layer):
 
 
 class MaxPooling2D(Layer):
-    def __init__(self, poolsize=(2, 2), ignore_border=True, st=None, impl='cudnn'):
+    def __init__(self, poolsize=(2, 2), ignore_border=True, st=None, impl='cpu'):
         super(MaxPooling2D,self).__init__()
         self.input = T.tensor4()
         self.poolsize = poolsize
@@ -177,10 +176,9 @@ class MaxPooling2D(Layer):
         self.impl = impl
     def get_output(self, train):
         X = self.get_input(train)
-        print "Pool:", self.impl
         if self.impl == 'cudnn':
           output = theano.sandbox.cuda.dnn.dnn_pool(img=gpu_contiguous(X), ws=self.poolsize, stride=self.st, mode='max')
-        elif self.impl == 'conv2d':
+        elif self.impl == 'cpu':
           output = downsample.max_pool_2d(X, self.poolsize, st=self.st, ignore_border=True)
         return output
 
