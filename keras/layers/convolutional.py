@@ -91,13 +91,12 @@ class MaxPooling1D(Layer):
             "ignore_border":self.ignore_border}
 
 
-
 class Convolution2D(Layer):
     def __init__(self, nb_filter, stack_size, nb_row, nb_col, 
         init='glorot_uniform', activation='linear', weights=None, 
         border_mode='valid', subsample=(1, 1),
         W_regularizer=None, b_regularizer=None, activity_regularizer=None,
-        W_constraint=None, b_constraint=None, impl='cpu'):
+        W_constraint=None, b_constraint=None):
         super(Convolution2D,self).__init__()
 
         self.init = initializations.get(init)
@@ -129,26 +128,21 @@ class Convolution2D(Layer):
             
         self.constraints = [W_constraint, b_constraint]
 
-        self.impl = impl
-
         if weights is not None:
             self.set_weights(weights)
 
     def get_output(self, train):
         X = self.get_input(train)
 
-        if self.impl == 'cudnn':
-          conv_out = theano.sandbox.cuda.dnn.dnn_conv(gpu_contiguous(X), gpu_contiguous(self.W),
-              border_mode=self.border_mode, subsample=self.subsample, conv_mode='cross')
-        elif self.impl == 'gpucorrmm':
-          conv_out = theano.sandbox.cuda.blas.GpuCorrMM(border_mode=self.border_mode,
-                                            subsample=self.subsample)(X,
-                                                                      self.W)
-        elif self.impl == 'cpu':
-          conv_out = theano.tensor.nnet.conv.conv2d(X, self.W, 
-              border_mode=self.border_mode, subsample=self.subsample)
-        elif self.impl == 'gpu':
-          print "Not Implemented!, TODO FFT"
+        conv_out = theano.tensor.nnet.conv.conv2d(X, self.W, 
+            border_mode=self.border_mode, subsample=self.subsample)
+        # if self.impl == 'cudnn':
+        #   conv_out = theano.sandbox.cuda.dnn.dnn_conv(gpu_contiguous(X), gpu_contiguous(self.W),
+        #       border_mode=self.border_mode, subsample=self.subsample, conv_mode='cross')
+        # elif self.impl == 'gpucorrmm':
+        #   conv_out = theano.sandbox.cuda.blas.GpuCorrMM(border_mode=self.border_mode,
+        #                                     subsample=self.subsample)(X,
+        #                                                               self.W)
 
         output = self.activation(conv_out + self.b.dimshuffle('x', 0, 'x', 'x'))
         return output
@@ -162,31 +156,25 @@ class Convolution2D(Layer):
             "init":self.init.__name__,
             "activation":self.activation.__name__,
             "border_mode":self.border_mode,
-            "subsample":self.subsample,
-            "impl":self.impl}
+            "subsample":self.subsample}
 
 
 class MaxPooling2D(Layer):
-    def __init__(self, poolsize=(2, 2), ignore_border=True, st=None, impl='cpu'):
+    def __init__(self, poolsize=(2, 2), ignore_border=True, st=None):
         super(MaxPooling2D,self).__init__()
         self.input = T.tensor4()
         self.poolsize = poolsize
         self.ignore_border = ignore_border
         self.st = st
-        self.impl = impl
     def get_output(self, train):
         X = self.get_input(train)
-        if self.impl == 'cudnn':
-          output = theano.sandbox.cuda.dnn.dnn_pool(img=gpu_contiguous(X), ws=self.poolsize, stride=self.st, mode='max')
-        elif self.impl == 'cpu':
-          output = downsample.max_pool_2d(X, self.poolsize, st=self.st, ignore_border=True)
+        output = downsample.max_pool_2d(X, self.poolsize, st=self.st, ignore_border=True)
         return output
 
     def get_config(self):
         return {"name":self.__class__.__name__,
             "poolsize":self.poolsize,
             "ignore_border":self.ignore_border}
-
 
 
 class ZeroPadding2D(Layer):
