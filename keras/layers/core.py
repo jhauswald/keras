@@ -191,12 +191,14 @@ class Dropout(MaskedLayer):
     '''
         Hinton's dropout.
     '''
-    def __init__(self, p):
+    def __init__(self, p, name=None):
         super(Dropout, self).__init__()
         self.p = p
+        self.name = name
 
     def get_output(self, train=False):
         X = self.get_input(train)
+        X.name = self.name
         if self.p > 0.:
             retain_prob = 1. - self.p
             if train:
@@ -214,14 +216,16 @@ class Activation(MaskedLayer):
     '''
         Apply an activation function to an output.
     '''
-    def __init__(self, activation, target=0, beta=0.1):
+    def __init__(self, activation, target=0, beta=0.1, name=None):
         super(Activation, self).__init__()
         self.activation = activations.get(activation)
         self.target = target
         self.beta = beta
+        self.name = name
 
     def get_output(self, train=False):
         X = self.get_input(train)
+        X.name = self.name
         return self.activation(X)
 
     def get_config(self):
@@ -327,7 +331,7 @@ class Dense(Layer):
             self.set_name(name)
 
     def set_name(self, name):
-        self.W.name = '%s_W' % name
+        self.W.name = '%s' % name
         self.b.name = '%s_b' % name
 
     def get_output(self, train=False):

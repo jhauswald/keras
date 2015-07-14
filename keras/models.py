@@ -287,7 +287,7 @@ class Sequential(Model, containers.Sequential):
         self._train_with_acc = theano.function(train_ins, [train_loss, train_accuracy],
             updates=updates, allow_input_downcast=True, mode=theano_mode)
         self._predict = theano.function(predict_ins, self.y_test,
-            allow_input_downcast=True, mode=theano_mode)
+            allow_input_downcast=True, mode=theano_mode,name="johann")
         self._test = theano.function(test_ins, test_loss,
             allow_input_downcast=True, mode=theano_mode)
         self._test_with_acc = theano.function(test_ins, [test_loss, test_accuracy],

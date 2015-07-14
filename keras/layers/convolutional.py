@@ -102,7 +102,8 @@ class Convolution2D(Layer):
     def __init__(self, nb_filter, stack_size, nb_row, nb_col,
         init='glorot_uniform', activation='linear', weights=None,
         border_mode='valid', subsample=(1, 1),
-        W_regularizer=None, b_regularizer=None, activity_regularizer=None, W_constraint=None, b_constraint=None):
+        W_regularizer=None, b_regularizer=None, activity_regularizer=None,
+                 W_constraint=None, b_constraint=None, name=None):
 
         super(Convolution2D,self).__init__()
         self.init = initializations.get(init)
@@ -138,6 +139,13 @@ class Convolution2D(Layer):
         if weights is not None:
             self.set_weights(weights)
 
+        if name is not None:
+            self.set_name(name)
+
+    def set_name(self, name):
+        self.W.name = '%s' % name
+        self.b.name = '%s_b' % name
+
     def get_output(self, train):
         X = self.get_input(train)
         conv_out = theano.tensor.nnet.conv.conv2d(X, self.W,
@@ -158,16 +166,17 @@ class Convolution2D(Layer):
 
 
 class MaxPooling2D(Layer):
-    def __init__(self, poolsize=(2, 2), stride=None, ignore_border=True):
+    def __init__(self, poolsize=(2, 2), stride=None, ignore_border=True, name=None):
         super(MaxPooling2D,self).__init__()
         self.input = T.tensor4()
         self.poolsize = poolsize
         self.stride = stride
         self.ignore_border = ignore_border
-
+        self.name = name
 
     def get_output(self, train):
         X = self.get_input(train)
+        X.name = self.name
         output = downsample.max_pool_2d(X, ds=self.poolsize, st=self.stride, ignore_border=self.ignore_border)
         return output
 
