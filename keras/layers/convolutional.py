@@ -103,7 +103,7 @@ class Convolution2D(Layer):
         init='glorot_uniform', activation='linear', weights=None,
         border_mode='valid', subsample=(1, 1),
         W_regularizer=None, b_regularizer=None, activity_regularizer=None,
-                 W_constraint=None, b_constraint=None, name=None):
+                 W_constraint=None, b_constraint=None, name=None, image_shape=None):
 
         super(Convolution2D,self).__init__()
         self.init = initializations.get(init)
@@ -142,14 +142,21 @@ class Convolution2D(Layer):
         if name is not None:
             self.set_name(name)
 
+        self.image_shape = image_shape
+
     def set_name(self, name):
         self.W.name = '%s' % name
         self.b.name = '%s_b' % name
 
     def get_output(self, train):
         X = self.get_input(train)
-        conv_out = theano.tensor.nnet.conv.conv2d(X, self.W,
-            border_mode=self.border_mode, subsample=self.subsample)
+        conv_out = theano.tensor.nnet.conv.conv2d(X,
+                                                  self.W,
+                                                  border_mode=self.border_mode,
+                                                  subsample=self.subsample,
+                                                  image_shape=self.image_shape,
+                                                  filter_shape=self.W_shape
+                                                 )
         output = self.activation(conv_out + self.b.dimshuffle('x', 0, 'x', 'x'))
         return output
 
