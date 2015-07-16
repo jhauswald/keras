@@ -3,6 +3,7 @@ from __future__ import absolute_import
 
 import theano
 import theano.tensor as T
+from theano import config as tc
 from theano.tensor.signal import downsample
 
 from .. import activations, initializations
@@ -150,13 +151,16 @@ class Convolution2D(Layer):
 
     def get_output(self, train):
         X = self.get_input(train)
-        conv_out = theano.tensor.nnet.conv.conv2d(X,
-                                                  self.W,
-                                                  border_mode=self.border_mode,
-                                                  subsample=self.subsample,
-                                                  image_shape=self.image_shape,
-                                                  filter_shape=self.W_shape
-                                                 )
+        if tc.device == 'gpu':
+          conv_out = theano.sandbox.cuda.blas.GpuCorrMM(subsample=self.subsample)(X, self.W)
+        else:
+          conv_out = theano.tensor.nnet.conv.conv2d(X,
+                                                    self.W,
+                                                    border_mode=self.border_mode,
+                                                    subsample=self.subsample,
+                                                    image_shape=self.image_shape,
+                                                    filter_shape=self.W_shape
+                                                   )
         output = self.activation(conv_out + self.b.dimshuffle('x', 0, 'x', 'x'))
         return output
 
