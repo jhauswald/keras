@@ -104,7 +104,8 @@ class Convolution2D(Layer):
         init='glorot_uniform', activation='linear', weights=None,
         border_mode='valid', subsample=(1, 1),
         W_regularizer=None, b_regularizer=None, activity_regularizer=None,
-                 W_constraint=None, b_constraint=None, name=None, image_shape=None):
+        W_constraint=None, b_constraint=None, name=None, image_shape=None,
+        unroll_batch=False, unroll_kern=None, unroll_patch=False):
 
         super(Convolution2D,self).__init__()
         self.init = initializations.get(init)
@@ -144,6 +145,9 @@ class Convolution2D(Layer):
             self.set_name(name)
 
         self.image_shape = image_shape
+        self.unroll_batch = unroll_batch
+        self.unroll_kern = unroll_kern
+        self.unroll_patch = unroll_patch
 
     def set_name(self, name):
         self.W.name = '%s' % name
@@ -159,7 +163,10 @@ class Convolution2D(Layer):
                                                     border_mode=self.border_mode,
                                                     subsample=self.subsample,
                                                     image_shape=self.image_shape,
-                                                    filter_shape=self.W_shape
+                                                    filter_shape=self.W_shape,
+                                                    unroll_batch=self.unroll_batch,
+                                                    unroll_kern=self.unroll_kern,
+                                                    unroll_patch=self.unroll_patch
                                                    )
         output = self.activation(conv_out + self.b.dimshuffle('x', 0, 'x', 'x'))
         return output
