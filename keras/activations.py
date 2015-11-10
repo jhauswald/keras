@@ -32,6 +32,10 @@ def hard_sigmoid(x):
     return T.nnet.hard_sigmoid(x)
 
 
+def norm(x):
+  return T.norm(x)
+
+
 def linear(x):
     '''
     The function returns the variable that is passed in, so all types work
