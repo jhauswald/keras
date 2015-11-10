@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import theano.tensor as T
+from numpy import *
 
 def softmax(x):
     return T.nnet.softmax(x.reshape((-1, x.shape[-1]))).reshape(x.shape)
@@ -25,7 +26,7 @@ def hard_sigmoid(x):
     return T.nnet.hard_sigmoid(x)
 
 def norm(x):
-    return T.var.norm(x)
+    return x / linalg.norm(x)
 
 def linear(x):
     '''
