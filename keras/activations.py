@@ -25,7 +25,7 @@ def hard_sigmoid(x):
     return T.nnet.hard_sigmoid(x)
 
 def norm(x):
-    return T.norm(x)
+    return T.var.norm(x)
 
 def linear(x):
     '''
