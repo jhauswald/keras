@@ -5,6 +5,7 @@
 - [Home](index.md)
 - [Index](documentation.md)
 - [Examples](examples.md)
+- [FAQ](faq.md)
 
 ---
 
@@ -36,8 +37,3 @@
 - [Sequence](preprocessing/sequence.md)
 - [Text](preprocessing/text.md)
 - [Image](preprocessing/image.md)
-
----
-
-## Utils
-- [Visualization](utils/visualization.md)

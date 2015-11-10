@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 import numpy as np
-np.random.seed(1337) # for reproducibility
+np.random.seed(1337)  # for reproducibility
 
 from keras.datasets import reuters
 from keras.models import Sequential
@@ -45,10 +45,10 @@ print('Y_test shape:', Y_test.shape)
 
 print("Building model...")
 model = Sequential()
-model.add(Dense(max_words, 512))
+model.add(Dense(512, input_shape=(max_words,)))
 model.add(Activation('relu'))
 model.add(Dropout(0.5))
-model.add(Dense(512, nb_classes))
+model.add(Dense(nb_classes))
 model.add(Activation('softmax'))
 
 model.compile(loss='categorical_crossentropy', optimizer='adam')

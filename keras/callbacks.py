@@ -1,16 +1,14 @@
 from __future__ import absolute_import
 from __future__ import print_function
-import theano
-import theano.tensor as T
-import numpy as np
-import warnings
-import time, json
-from collections import deque
 
+import numpy as np
+import time, json, warnings
+
+from collections import deque
 from .utils.generic_utils import Progbar
 
-class CallbackList(object):
 
+class CallbackList(object):
     def __init__(self, callbacks=[], queue_length=10):
         self.callbacks = [c for c in callbacks]
         self.queue_length = queue_length
@@ -43,10 +41,9 @@ class CallbackList(object):
             callback.on_batch_begin(batch, logs)
         self._delta_ts_batch_begin.append(time.time() - t_before_callbacks)
         delta_t_median = np.median(self._delta_ts_batch_begin)
-        if self._delta_t_batch > 0. and delta_t_median > 0.95 * self._delta_t_batch \
-            and delta_t_median > 0.1:
+        if self._delta_t_batch > 0. and delta_t_median > 0.95 * self._delta_t_batch and delta_t_median > 0.1:
             warnings.warn('Method on_batch_begin() is slow compared '
-                'to the batch update (%f). Check your callbacks.' % delta_t_median)
+                          'to the batch update (%f). Check your callbacks.' % delta_t_median)
         self._t_enter_batch = time.time()
 
     def on_batch_end(self, batch, logs={}):
@@ -56,10 +53,9 @@ class CallbackList(object):
             callback.on_batch_end(batch, logs)
         self._delta_ts_batch_end.append(time.time() - t_before_callbacks)
         delta_t_median = np.median(self._delta_ts_batch_end)
-        if self._delta_t_batch > 0. and delta_t_median > 0.95 * self._delta_t_batch \
-            and delta_t_median > 0.1:
+        if self._delta_t_batch > 0. and delta_t_median > 0.95 * self._delta_t_batch and delta_t_median > 0.1:
             warnings.warn('Method on_batch_end() is slow compared '
-                'to the batch update (%f). Check your callbacks.' % delta_t_median)
+                          'to the batch update (%f). Check your callbacks.' % delta_t_median)
 
     def on_train_begin(self, logs={}):
         for callback in self.callbacks:
@@ -99,16 +95,17 @@ class Callback(object):
     def on_train_end(self, logs={}):
         pass
 
-class BaseLogger(Callback):
 
+class BaseLogger(Callback):
     def on_train_begin(self, logs={}):
         self.verbose = self.params['verbose']
+        self.nb_epoch = self.params['nb_epoch']
 
     def on_epoch_begin(self, epoch, logs={}):
         if self.verbose:
-            print('Epoch %d' % epoch)
-            self.progbar = Progbar(target=self.params['nb_sample'], \
-                verbose=self.verbose)
+            print('Epoch %d/%d' % (epoch + 1, self.nb_epoch))
+            self.progbar = Progbar(target=self.params['nb_sample'],
+                                   verbose=self.verbose)
         self.seen = 0
         self.totals = {}
 
@@ -139,7 +136,8 @@ class BaseLogger(Callback):
                 self.log_values.append((k, self.totals[k] / self.seen))
             if k in logs:
                 self.log_values.append((k, logs[k]))
-        self.progbar.update(self.seen, self.log_values)
+        if self.verbose:
+            self.progbar.update(self.seen, self.log_values)
 
 
 class History(Callback):
@@ -175,34 +173,52 @@ class History(Callback):
 
 
 class ModelCheckpoint(Callback):
-    def __init__(self, filepath, monitor='val_loss', verbose=0, save_best_only=False):
+    def __init__(self, filepath, monitor='val_loss', verbose=0, save_best_only=False, mode='auto'):
+
         super(Callback, self).__init__()
-        
         self.monitor = monitor
         self.verbose = verbose
         self.filepath = filepath
         self.save_best_only = save_best_only
-        self.best = np.Inf
+        
+        if mode not in ['auto', 'min', 'max']:
+            warnings.warn("ModelCheckpoint mode %s is unknown, fallback to auto mode" % (self.mode), RuntimeWarning)
+            mode = 'auto'
+            
+        if mode == "min":
+            self.monitor_op = np.less
+            self.best = np.Inf
+        elif mode == "max":
+            self.monitor_op = np.greater
+            self.best = -np.Inf
+        else:
+            if "acc" in self.monitor:
+                self.monitor_op = np.greater
+                self.best = -np.Inf
+            else:
+                self.monitor_op = np.less
+                self.best = np.Inf
 
     def on_epoch_end(self, epoch, logs={}):
+        filepath = self.filepath.format(epoch=epoch, **logs)
         if self.save_best_only:
             current = logs.get(self.monitor)
             if current is None:
                 warnings.warn("Can save best model only with %s available, skipping." % (self.monitor), RuntimeWarning)
             else:
-                if current < self.best:
+                if self.monitor_op(current, self.best):
                     if self.verbose > 0:
                         print("Epoch %05d: %s improved from %0.5f to %0.5f, saving model to %s"
-                            % (epoch, self.monitor, self.best, current, self.filepath))
+                              % (epoch, self.monitor, self.best, current, filepath))
                     self.best = current
-                    self.model.save_weights(self.filepath, overwrite=True)
+                    self.model.save_weights(filepath, overwrite=True)
                 else:
                     if self.verbose > 0:
                         print("Epoch %05d: %s did not improve" % (epoch, self.monitor))
         else:
             if self.verbose > 0:
-                print("Epoch %05d: saving model to %s" % (epoch, self.filepath))
-            self.model.save_weights(self.filepath, overwrite=True)
+                print("Epoch %05d: saving model to %s" % (epoch, filepath))
+            self.model.save_weights(filepath, overwrite=True)
 
 
 class EarlyStopping(Callback):
@@ -219,7 +235,7 @@ class EarlyStopping(Callback):
         current = logs.get(self.monitor)
         if current is None:
             warnings.warn("Early stopping requires %s available!" % (self.monitor), RuntimeWarning)
- 
+
         if current < self.best:
             self.best = current
             self.wait = 0
@@ -238,7 +254,6 @@ class RemoteMonitor(Callback):
     def on_epoch_begin(self, epoch, logs={}):
         self.seen = 0
         self.totals = {}
-        
 
     def on_batch_end(self, batch, logs={}):
         batch_size = logs.get('size', 0)
@@ -256,7 +271,23 @@ class RemoteMonitor(Callback):
 
         for k, v in self.totals.items():
             send[k] = v / self.seen
-        for k, v in self.logs:
+        for k, v in logs.items():
             send[k] = v
 
-        r = requests.post(self.root + '/publish/epoch/end/', {'data':json.dumps(send)})
+        try:
+            r = requests.post(self.root + '/publish/epoch/end/', {'data': json.dumps(send)})
+        except:
+            print('Warning: could not reach RemoteMonitor root server at ' + str(self.root))
+
+
+class LearningRateScheduler(Callback):
+    '''LearningRateScheduler
+    schedule is a function that gets an epoch number as input and returns a new
+    learning rate as output.
+    '''
+    def __init__(self, schedule):
+        super(LearningRateScheduler, self).__init__()
+        self.schedule = schedule
+
+    def on_epoch_begin(self, epoch, logs={}):
+        self.model.optimizer.lr.set_value(self.schedule(epoch))

@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 import numpy as np
-np.random.seed(1337) # for reproducibility
+np.random.seed(1337)  # for reproducibility
 
 from keras.datasets import mnist
 from keras.models import Sequential
@@ -20,8 +20,6 @@ batch_size = 128
 nb_classes = 10
 nb_epoch = 20
 
-
-
 # the data, shuffled and split between tran and test sets
 (X_train, y_train), (X_test, y_test) = mnist.load_data()
 
@@ -39,13 +37,13 @@ Y_train = np_utils.to_categorical(y_train, nb_classes)
 Y_test = np_utils.to_categorical(y_test, nb_classes)
 
 model = Sequential()
-model.add(Dense(784, 128))
+model.add(Dense(128, input_shape=(784,)))
 model.add(Activation('relu'))
 model.add(Dropout(0.2))
-model.add(Dense(128, 128))
+model.add(Dense(128))
 model.add(Activation('relu'))
 model.add(Dropout(0.2))
-model.add(Dense(128, 10))
+model.add(Dense(10))
 model.add(Activation('softmax'))
 
 rms = RMSprop()

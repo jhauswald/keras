@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 np.random.seed(1337)
 
-from keras.models import Sequential
+from keras.models import Sequential, model_from_json, model_from_yaml
 from keras.layers.core import Dense, Activation, Merge
 from keras.utils import np_utils
 from keras.utils.test_utils import get_test_data
@@ -19,19 +19,20 @@ train_samples = 5000
 test_samples = 1000
 
 (X_train, y_train), (X_test, y_test) = get_test_data(nb_train=train_samples, nb_test=test_samples, input_shape=(input_dim,),
-    classification=True, nb_class=4)
+                                                     classification=True, nb_class=4)
 y_test = np_utils.to_categorical(y_test)
 y_train = np_utils.to_categorical(y_train)
 print(X_train.shape)
 print(y_train.shape)
 
+
 class TestSequential(unittest.TestCase):
     def test_sequential(self):
         print('Test sequential')
         model = Sequential()
-        model.add(Dense(input_dim, nb_hidden))
+        model.add(Dense(nb_hidden, input_shape=(input_dim,)))
         model.add(Activation('relu'))
-        model.add(Dense(nb_hidden, nb_class))
+        model.add(Dense(nb_class))
         model.add(Activation('softmax'))
         model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
 
@@ -56,9 +57,9 @@ class TestSequential(unittest.TestCase):
         print('test weight saving')
         model.save_weights('temp.h5', overwrite=True)
         model = Sequential()
-        model.add(Dense(input_dim, nb_hidden))
+        model.add(Dense(nb_hidden, input_shape=(input_dim,)))
         model.add(Activation('relu'))
-        model.add(Dense(nb_hidden, nb_class))
+        model.add(Dense(nb_class))
         model.add(Activation('softmax'))
         model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
         model.load_weights('temp.h5')
@@ -67,21 +68,28 @@ class TestSequential(unittest.TestCase):
         print(nloss)
         assert(loss == nloss)
 
+        # test json serialization
+        json_data = model.to_json()
+        model = model_from_json(json_data)
+
+        # test yaml serialization
+        yaml_data = model.to_yaml()
+        model = model_from_yaml(yaml_data)
 
     def test_merge_sum(self):
         print('Test merge: sum')
         left = Sequential()
-        left.add(Dense(input_dim, nb_hidden))
+        left.add(Dense(nb_hidden, input_shape=(input_dim,)))
         left.add(Activation('relu'))
 
         right = Sequential()
-        right.add(Dense(input_dim, nb_hidden))
+        right.add(Dense(nb_hidden, input_shape=(input_dim,)))
         right.add(Activation('relu'))
 
         model = Sequential()
         model.add(Merge([left, right], mode='sum'))
 
-        model.add(Dense(nb_hidden, nb_class))
+        model.add(Dense(nb_class))
         model.add(Activation('softmax'))
 
         model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
@@ -105,14 +113,14 @@ class TestSequential(unittest.TestCase):
         print('test weight saving')
         model.save_weights('temp.h5', overwrite=True)
         left = Sequential()
-        left.add(Dense(input_dim, nb_hidden))
+        left.add(Dense(nb_hidden, input_shape=(input_dim,)))
         left.add(Activation('relu'))
         right = Sequential()
-        right.add(Dense(input_dim, nb_hidden))
+        right.add(Dense(nb_hidden, input_shape=(input_dim,)))
         right.add(Activation('relu'))
         model = Sequential()
         model.add(Merge([left, right], mode='sum'))
-        model.add(Dense(nb_hidden, nb_class))
+        model.add(Dense(nb_class))
         model.add(Activation('softmax'))
         model.load_weights('temp.h5')
         model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
@@ -121,21 +129,56 @@ class TestSequential(unittest.TestCase):
         print(nloss)
         assert(loss == nloss)
 
+    def test_merge_dot1(self):
+        print('Test merge: dot')
+        left = Sequential()
+        left.add(Dense(input_dim=input_dim, output_dim=nb_hidden))
+        left.add(Activation('relu'))
+
+        right = Sequential()
+        right.add(Dense(input_dim=input_dim, output_dim=nb_hidden))
+        right.add(Activation('relu'))
+
+        model = Sequential()
+        model.add(Merge([left, right], mode='dot', dot_axes=1))
+
+        model.add(Dense(nb_class))
+        model.add(Activation('softmax'))
+
+        model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
+
+    def test_merge_dot2(self):
+        print('Test merge: dot')
+        left = Sequential()
+        left.add(Dense(input_dim=input_dim, output_dim=nb_hidden))
+        left.add(Activation('relu'))
+
+        right = Sequential()
+        right.add(Dense(input_dim=input_dim, output_dim=nb_hidden))
+        right.add(Activation('relu'))
+
+        model = Sequential()
+        model.add(Merge([left, right], mode='dot', dot_axes=([1], [1])))
+
+        model.add(Dense(nb_class))
+        model.add(Activation('softmax'))
+
+        model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
 
     def test_merge_concat(self):
         print('Test merge: concat')
         left = Sequential()
-        left.add(Dense(input_dim, nb_hidden))
+        left.add(Dense(nb_hidden, input_shape=(input_dim,)))
         left.add(Activation('relu'))
 
         right = Sequential()
-        right.add(Dense(input_dim, nb_hidden))
+        right.add(Dense(nb_hidden, input_shape=(input_dim,)))
         right.add(Activation('relu'))
 
         model = Sequential()
         model.add(Merge([left, right], mode='concat'))
 
-        model.add(Dense(nb_hidden * 2, nb_class))
+        model.add(Dense(nb_class))
         model.add(Activation('softmax'))
 
         model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
@@ -159,17 +202,17 @@ class TestSequential(unittest.TestCase):
         print('test weight saving')
         model.save_weights('temp.h5', overwrite=True)
         left = Sequential()
-        left.add(Dense(input_dim, nb_hidden))
+        left.add(Dense(nb_hidden, input_shape=(input_dim,)))
         left.add(Activation('relu'))
 
         right = Sequential()
-        right.add(Dense(input_dim, nb_hidden))
+        right.add(Dense(nb_hidden, input_shape=(input_dim,)))
         right.add(Activation('relu'))
 
         model = Sequential()
         model.add(Merge([left, right], mode='concat'))
 
-        model.add(Dense(nb_hidden * 2, nb_class))
+        model.add(Dense(nb_class))
         model.add(Activation('softmax'))
 
         model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
@@ -179,31 +222,30 @@ class TestSequential(unittest.TestCase):
         print(nloss)
         assert(loss == nloss)
 
-
     def test_merge_recursivity(self):
         print('Test merge recursivity')
 
         left = Sequential()
-        left.add(Dense(input_dim, nb_hidden))
+        left.add(Dense(nb_hidden, input_shape=(input_dim,)))
         left.add(Activation('relu'))
 
         right = Sequential()
-        right.add(Dense(input_dim, nb_hidden))
+        right.add(Dense(nb_hidden, input_shape=(input_dim,)))
         right.add(Activation('relu'))
 
         righter = Sequential()
-        righter.add(Dense(input_dim, nb_hidden))
+        righter.add(Dense(nb_hidden, input_shape=(input_dim,)))
         righter.add(Activation('relu'))
 
         intermediate = Sequential()
         intermediate.add(Merge([left, right], mode='sum'))
-        intermediate.add(Dense(nb_hidden, nb_hidden))
+        intermediate.add(Dense(nb_hidden))
         intermediate.add(Activation('relu'))
 
         model = Sequential()
         model.add(Merge([intermediate, righter], mode='sum'))
 
-        model.add(Dense(nb_hidden, nb_class))
+        model.add(Dense(nb_class))
         model.add(Activation('softmax'))
 
         model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
@@ -231,17 +273,16 @@ class TestSequential(unittest.TestCase):
         print(nloss)
         assert(loss == nloss)
 
-
     def test_merge_overlap(self):
         print('Test merge overlap')
         left = Sequential()
-        left.add(Dense(input_dim, nb_hidden))
+        left.add(Dense(nb_hidden, input_shape=(input_dim,)))
         left.add(Activation('relu'))
 
         model = Sequential()
         model.add(Merge([left, left], mode='sum'))
 
-        model.add(Dense(nb_hidden, nb_class))
+        model.add(Dense(nb_class))
         model.add(Activation('softmax'))
 
         model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
@@ -271,6 +312,27 @@ class TestSequential(unittest.TestCase):
         print(nloss)
         assert(loss == nloss)
 
+    def test_count_params(self):
+        print('test count params')
+        input_dim = 20
+        nb_units = 10
+        nb_classes = 2
+
+        n = input_dim * nb_units + nb_units
+        n += nb_units * nb_units + nb_units
+        n += nb_units * nb_classes + nb_classes
+
+        model = Sequential()
+        model.add(Dense(nb_units, input_shape=(input_dim,)))
+        model.add(Dense(nb_units))
+        model.add(Dense(nb_classes))
+        model.add(Activation('softmax'))
+
+        self.assertEqual(n, model.count_params())
+
+        model.compile('sgd', 'binary_crossentropy')
+
+        self.assertEqual(n, model.count_params())
 
 
 if __name__ == '__main__':

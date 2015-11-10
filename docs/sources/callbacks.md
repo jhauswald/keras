@@ -33,7 +33,10 @@ The `logs` dictionary will contain keys for quantities relevant to the current b
 keras.callbacks.ModelCheckpoint(filepath, verbose=0, save_best_only=False)
 ```
 
-Save the model after every epoch. If `save_best_only=True`, the latest best model according to the validation loss will not be overwritten. 
+Save the model after every epoch. If `save_best_only=True`, the latest best model according to the validation loss will not be overwritten.
+`filepath` can contain named formatting options, which will be filled the value of `epoch` and keys in `logs` (passed in `on_epoch_end`).
+
+For example: if `filepath` is `weights.{epoch:02d}-{val_loss:.2f}.hdf5`, then multiple files will be save with the epoch number and the validation loss.
 
 
 ```python
@@ -52,7 +55,7 @@ You can create a custom callback by extending the base class `keras.callbacks.Ca
 Here's a simple example saving a list of losses over each batch during training:
 ```python
 class LossHistory(keras.callbacks.Callback):
-    def on_train_begin(self):
+    def on_train_begin(self, logs={}):
         self.losses = []
 
     def on_batch_end(self, batch, logs={}):
@@ -72,7 +75,7 @@ class LossHistory(keras.callbacks.Callback):
         self.losses.append(logs.get('loss'))
 
 model = Sequential()
-model.add(Dense(784, 10, init='uniform'))
+model.add(Dense(10, input_dim=784, init='uniform'))
 model.add(Activation('softmax'))
 model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
 
@@ -94,7 +97,7 @@ print history.losses
 from keras.callbacks import ModelCheckpoint
 
 model = Sequential()
-model.add(Dense(784, 10, init='uniform'))
+model.add(Dense(10, input_dim=784, init='uniform'))
 model.add(Activation('softmax'))
 model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
 

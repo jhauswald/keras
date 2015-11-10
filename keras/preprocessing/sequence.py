@@ -7,7 +7,7 @@ from six.moves import range
 def pad_sequences(sequences, maxlen=None, dtype='int32', padding='pre', truncating='pre', value=0.):
     """
         Pad each sequence to the same length: 
-        the length of the longuest sequence.
+        the length of the longest sequence.
 
         If maxlen is provided, any sequence longer
         than maxlen is truncated to maxlen. Truncation happens off either the beginning (default) or
@@ -24,6 +24,8 @@ def pad_sequences(sequences, maxlen=None, dtype='int32', padding='pre', truncati
 
     x = (np.ones((nb_samples, maxlen)) * value).astype(dtype)
     for idx, s in enumerate(sequences):
+        if len(s) == 0:
+            continue # empty list was found
         if truncating == 'pre':
             trunc = s[-maxlen:]
         elif truncating == 'post':
